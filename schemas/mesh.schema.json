@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mesh",
+  "$comment": "A mesh",
+  "type": "object",
+  "required": ["geometry"],
+  "additionalProperties": false,
+  "properties": {
+    "geometry": {
+      "$comment": "URL to the geometry",
+      "type": "string"
+    },
+    "material": {
+      "$comment": "URL to the material",
+      "type": "string"
+    },
+    "shader": {
+      "$comment": "URL to the shader",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry",
+  "$comment": "A geometry",
+  "type": "object",
+  "required": ["vertices", "attributes", "stepModes", "primitive"],
+  "additionalProperties": false,
+  "properties": {
+    "attributes": {
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "type": "array",
+        "minLength": 1,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": ["position", "uv", "normal"]
+        }
+      }
+    },
+    "stepModes": {
+      "type": "array",
+      "minLength": 1,
+      "items": {
+        "type": "string",
+        "enum": ["vertex", "instance"]
+      }
+    },
+    "primitive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cullMode": {
+          "enum": ["none", "front", "back"]
+        },
+        "frontFace": {
+          "enum": ["ccw", "cw"]
+        },
+        "stripIndexFormat": {
+          "enum": ["uint16", "uint32"]
+        },
+        "topology": {
+          "enum": [
+            "point-list",
+            "line-list",
+            "line-strip",
+            "triangle-list",
+            "triangle-strip"
+          ]
+        },
+        "unclippedDepth": {
+          "type": "boolean"
+        }
+      }
+    },
+    "vertices": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "indices": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    }
+  }
+}

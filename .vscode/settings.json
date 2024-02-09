@@ -1,0 +1,33 @@
+{
+  "eslint.useFlatConfig": true,
+  "json.schemas": [
+    {
+      "fileMatch": ["scenes/*.json"],
+      "url": "./schemas/scene.schema.json"
+    },
+    {
+      "fileMatch": ["gameObjects/*.json"],
+      "url": "./schemas/gameObject.schema.json"
+    },
+    {
+      "fileMatch": ["models/*.json"],
+      "url": "./schemas/model.schema.json"
+    },
+    {
+      "fileMatch": ["meshs/*.json"],
+      "url": "./schemas/mesh.schema.json"
+    },
+    {
+      "fileMatch": ["geometries/*.json"],
+      "url": "./schemas/geometry.schema.json"
+    },
+    {
+      "fileMatch": ["materials/*.json"],
+      "url": "./schemas/material.schema.json"
+    },
+    {
+      "fileMatch": ["shaders/*.json"],
+      "url": "./schemas/shader.schema.json"
+    }
+  ]
+}

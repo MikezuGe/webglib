@@ -1,0 +1,9 @@
+{
+  "textures": [
+    {
+      "filename": "eat",
+      "format": "rgba8unorm",
+      "type": "tColor"
+    }
+  ]
+}
