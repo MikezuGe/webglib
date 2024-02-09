@@ -1,0 +1,42 @@
+{
+  "name": "webglib",
+  "version": "1.0.0",
+  "description": "",
+  "author": "MikezuGe@users.noreply.github.com",
+  "homepage": "https://github.com/MikezuGe/webglib#readme",
+  "type": "module",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikezuGe/webglib.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MikezuGe/webglib/issues"
+  },
+  "scripts": {
+    "test": "jest",
+    "lint": "npm run lint --ws",
+    "type-check": "npm run type-check --ws"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "jest": {
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+      "**/src/**/*.ts"
+    ],
+    "projects": [
+      "<rootDir>/apps/*",
+      "<rootDir>/packages/*"
+    ],
+    "verbose": true
+  },
+  "devDependencies": {
+    "@parcel/packager-ts": "^2.12.0",
+    "@parcel/transformer-typescript-types": "^2.11.0",
+    "typescript": "^5.3.3"
+  }
+}
