@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-magic-numbers */
 import { CustomCanvas, initWebGPU } from "@webglib/custom-canvas";
 import { Cube } from "@webglib/geometry";
 import { mat4 } from "wgpu-matrix";
@@ -9,42 +10,49 @@ struct Uniforms {
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
-struct VertexInput {
+struct VertexIn {
   @location(0) position: vec4f,
-  @location(1) color: vec4f
+  @location(1) color: vec3f
 }
 
-struct VertexOut {
+struct VertexOutput {
   @builtin(position) position: vec4f,
-  @location(0) color: vec4f
+  @location(0) color: vec3f
 }
 
 @vertex
-fn vertex_main(vertexData: VertexInput) -> VertexOut {
-  var output: VertexOut;
-  output.position = uniforms.viewProjectionMatrix * vertexData.position;
-  output.color = vertexData.color;
+fn vertex_main(vertexIn: VertexIn) -> VertexOutput {
+  var output: VertexOutput;
+  output.position = uniforms.viewProjectionMatrix * vertexIn.position;
+  output.color = vertexIn.color;
   return output;
 }
 
 @fragment
-fn fragment_main(fragmentData: VertexOut) -> @location(0) vec4f
+fn fragment_main(fragmentData: VertexOutput) -> @location(0) vec4f
 {
-  return fragmentData.color;
+  return vec4f(fragmentData.color, 0.0);
 }
 ` as const;
 
 export const test = async (): Promise<void> => {
   const cube = new Cube();
+  cube.useAttributes({
+    position: 0,
+    color: 1,
+  });
   const customCanvas = new CustomCanvas();
   const gpu = await initWebGPU(customCanvas);
   const { device, format, context } = gpu;
 
   const vertexBuffer = device.createBuffer({
-    size: cube.vertices.byteLength,
-    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    size: cube.verticesByteLength,
+    usage: GPUBufferUsage.VERTEX,
+    mappedAtCreation: true,
   });
-  device.queue.writeBuffer(vertexBuffer, 0, cube.vertices);
+  const cubeVerticeData = new Float32Array(vertexBuffer.getMappedRange());
+  cube.generateVertices(cubeVerticeData);
+  vertexBuffer.unmap();
 
   const uniformBuffer = device.createBuffer({
     size: 64, // 16 * 4
@@ -83,35 +91,20 @@ export const test = async (): Promise<void> => {
       entryPoint: "vertex_main",
       buffers: [
         {
-          arrayStride: 36,
           stepMode: "vertex",
-          attributes: [
-            {
-              shaderLocation: 0,
-              offset: 0,
-              format: "float32x3",
-            },
-            {
-              shaderLocation: 1,
-              offset: 12,
-              format: "float32x3",
-            },
-          ],
+          arrayStride: cube.strideBytes,
+          attributes: cube.attributes,
         },
       ],
     },
     fragment: {
       module: shaderModule,
       entryPoint: "fragment_main",
-      targets: [
-        {
-          format,
-        },
-      ],
+      targets: [{ format }],
     },
     primitive: {
       topology: "triangle-list",
-      cullMode: "front",
+      cullMode: "back",
       frontFace: "ccw",
     },
     layout: "auto",
@@ -139,4 +132,5 @@ export const test = async (): Promise<void> => {
   device.queue.submit([commandEncoder.finish()]);
 };
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 test();

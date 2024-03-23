@@ -2,6 +2,11 @@ import type { ICanvasOptions, ICustomCanvas } from "./types";
 
 const zero = 0;
 
+/**
+ * A wrapper class for HTML canvas.
+ * Appends the created canvas to the body.
+ * Access the canvas with 'canvasElement' property.
+ */
 export class CustomCanvas implements ICustomCanvas {
   public readonly canvasElement = document.createElement("canvas");
   private _backgroundColor = "lightGray";
