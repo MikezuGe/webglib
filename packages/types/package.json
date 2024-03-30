@@ -1,0 +1,24 @@
+{
+  "name": "@webglib/types",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "parcel build",
+    "lint": "eslint ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "source": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "parcel": "^2.12.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.4",
+    "typescript-eslint": "^7.5.0"
+  }
+}

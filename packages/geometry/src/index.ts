@@ -1,2 +1,2 @@
 export * from "./Cube";
-export type * from "./types";
+export * from "./Geometry";

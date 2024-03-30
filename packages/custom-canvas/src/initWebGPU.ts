@@ -1,5 +1,5 @@
 import { assertExists } from "@webglib/util";
-import { IInitWebGPU, ICustomCanvas } from "./types";
+import type { IInitWebGPU, ICustomCanvas } from "@webglib/types";
 
 export const initWebGPU = async (
   canvas: ICustomCanvas
@@ -11,10 +11,9 @@ export const initWebGPU = async (
   const context = canvas.canvasElement.getContext("webgpu");
   assertExists(context, "No webGPU context found");
 
-  const format = gpu.getPreferredCanvasFormat();
   context.configure({
     device,
-    format,
+    format: gpu.getPreferredCanvasFormat(),
   });
 
   return {
@@ -22,6 +21,5 @@ export const initWebGPU = async (
     adapter,
     device,
     context,
-    format,
   };
 };

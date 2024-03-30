@@ -1,3 +1,15 @@
+export type IAttribute = "color" | "normal" | "position";
+
+export type I3DVector = [number, number, number];
+
+export type ICubeFaceName =
+  | "back"
+  | "bottom"
+  | "front"
+  | "left"
+  | "right"
+  | "top";
+
 export interface ICustomCanvas {
   /**
    * The canvas element
@@ -59,5 +71,4 @@ export interface IInitWebGPU {
   readonly canvas: ICustomCanvas;
   readonly context: GPUCanvasContext;
   readonly device: GPUDevice;
-  readonly format: GPUTextureFormat;
 }
