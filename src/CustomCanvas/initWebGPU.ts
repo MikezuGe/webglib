@@ -1,6 +1,7 @@
+import { assertExists } from "src/utils";
+
 import { CustomCanvas } from "./CustomCanvas";
 import type { IInitWebGPU } from "./types";
-import { assertExists } from "src/utils";
 
 export const initWebGPU = async (): Promise<IInitWebGPU> => {
   const canvas = new CustomCanvas();

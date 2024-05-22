@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 // @ts-check
-
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(...tseslint.configs.all, {

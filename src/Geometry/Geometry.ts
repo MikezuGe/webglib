@@ -1,16 +1,19 @@
-export enum GeometryAttributes {
-  position = "position",
-  normal = "normal",
-}
+import { FLOAT32_BYTES, N3 } from "src/definitions";
+
+import { GeometryAttributes } from "./types";
 
 export abstract class Geometry {
+  public indexFormat: GPUIndexFormat = "uint16";
   public readonly primitive: GPUPrimitiveState = {
     topology: "triangle-list",
     frontFace: "ccw",
     cullMode: "back",
   };
-  protected _indiced = false;
-  protected readonly _attributes = new Map<GeometryAttributes, true>();
+  protected _indiced = true;
+  protected readonly _attributesMap = new Map<GeometryAttributes, true>([
+    [GeometryAttributes.position, true],
+  ]);
+  private readonly _attributes: GPUVertexAttribute[] = [];
 
   protected abstract _stride: number;
   protected abstract _vertices: number;
@@ -53,27 +56,59 @@ export abstract class Geometry {
 
   public set indiced(value: boolean) {
     this._indiced = value;
-    this.updateGeometryInfo();
+  }
+
+  public get attributes(): GPUVertexAttribute[] {
+    return this._attributes;
   }
 
   public enableAttributes(attributes: GeometryAttributes[]): void {
     for (const attribute of attributes) {
-      this._attributes.set(attribute, true);
+      this._attributesMap.set(attribute, true);
     }
-    this.updateGeometryInfo();
+    this._updateGeometryInfo();
   }
 
   public disableAttributes(attributes: GeometryAttributes[]): void {
     for (const attribute of attributes) {
-      this._attributes.delete(attribute);
+      this._attributesMap.delete(attribute);
     }
-    this.updateGeometryInfo();
+    this._updateGeometryInfo();
+  }
+
+  protected _updateGeometryInfo(): void {
+    let stride = 0;
+    let strideBytes = 0;
+    this._attributes.length = 0;
+
+    let offset = 0;
+    if (this._attributesMap.has(GeometryAttributes.position)) {
+      stride += N3;
+      strideBytes += N3 * FLOAT32_BYTES;
+      this._attributes.push({
+        format: "float32x3",
+        offset,
+        shaderLocation: this._attributes.length,
+      });
+      offset += N3 * FLOAT32_BYTES;
+    }
+    if (this._attributesMap.has(GeometryAttributes.normal)) {
+      stride += N3;
+      strideBytes += N3 * FLOAT32_BYTES;
+      this._attributes.push({
+        format: "float32x3",
+        offset,
+        shaderLocation: this._attributes.length,
+      });
+      offset += N3 * FLOAT32_BYTES;
+    }
+
+    this._stride = stride;
+    this._strideBytes = strideBytes;
   }
 
   public abstract generateVertices(
     arrayBuffer?: Float32Array,
-    indexBuffer?: Uint16Array | Uint32Array
+    indexBuffer?: Uint16Array | Uint32Array,
   ): void;
-
-  protected abstract updateGeometryInfo(): void;
 }

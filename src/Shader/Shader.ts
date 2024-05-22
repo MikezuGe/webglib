@@ -1,48 +1,79 @@
 import type { Geometry } from "src/Geometry";
+import { ReadinessState } from "src/utils";
 
-export class Shader {
-  public readonly renderPipeline: GPURenderPipeline;
-  private readonly _shaderModule: GPUShaderModule;
+import { UniformGroup } from "./UniformGroup";
+import type { UniformDefinitionMap } from "./types";
+
+interface ShaderOptions<T extends UniformDefinitionMap> {
+  code: string;
+  geometry: Geometry;
+  uniformDefinitions: T;
+}
+
+export class Shader<
+  T extends UniformDefinitionMap,
+  K extends Extract<keyof T, string>,
+> {
   private readonly _code: string;
+  private readonly _geometry: Geometry;
+  private readonly _uniformDefinitions: T;
+  private readonly _uniformBufferCreators = new Map<
+    string,
+    <U extends K>() => UniformGroup<T[U]>
+  >();
+  private readonly _state = new ReadinessState();
+  private _renderPipeline?: GPURenderPipeline;
 
-  public constructor({
-    code,
-    geometry,
-    textureFormat,
-    device,
-  }: {
-    code: string;
-    geometry: Geometry;
-    textureFormat: GPUTextureFormat;
-    device: GPUDevice;
-  }) {
+  public constructor({ code, geometry, uniformDefinitions }: ShaderOptions<T>) {
     this._code = code;
-    this._shaderModule = device.createShaderModule({ code: this._code });
-    this.renderPipeline = device.createRenderPipeline({
+    this._geometry = geometry;
+    this._uniformDefinitions = uniformDefinitions;
+  }
+
+  public get renderPipeline(): GPURenderPipeline {
+    this._state.isStateOrThrow(ReadinessState.initialized);
+    return this._renderPipeline!;
+  }
+
+  public setup(device: GPUDevice, textureFormat: GPUTextureFormat): void {
+    this._state.isStateOrThrow(ReadinessState.uninitialized);
+    this._state.setState(ReadinessState.preparing);
+
+    const shaderModule = device.createShaderModule({ code: this._code });
+    this._renderPipeline = device.createRenderPipeline({
       layout: "auto",
       vertex: {
-        module: this._shaderModule,
+        module: shaderModule,
         buffers: [
           {
-            arrayStride: geometry.strideBytes,
-            attributes: [
-              {
-                format: "float32x3",
-                offset: 0,
-                shaderLocation: 0,
-              },
-            ],
+            arrayStride: this._geometry.strideBytes,
+            attributes: this._geometry.attributes,
             stepMode: "vertex",
           },
         ],
         entryPoint: "vertex_main",
       },
       fragment: {
-        module: this._shaderModule,
+        module: shaderModule,
         entryPoint: "fragment_main",
         targets: [{ format: textureFormat }],
       },
-      primitive: geometry.primitive,
+      primitive: this._geometry.primitive,
     });
+
+    for (const name in this._uniformDefinitions) {
+      const uniformDefinition = this._uniformDefinitions[name];
+      this._uniformBufferCreators.set(name, <U extends K>() => {
+        const uniformGroup = new UniformGroup(uniformDefinition as T[U]);
+        uniformGroup.setup(device, this._renderPipeline!);
+        return uniformGroup;
+      });
+    }
+
+    this._state.setState(ReadinessState.initialized);
+  }
+
+  public createUniformGroup<U extends K>(name: U): UniformGroup<T[U]> {
+    return this._uniformBufferCreators.get(name)!();
   }
 }

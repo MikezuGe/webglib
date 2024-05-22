@@ -1,18 +1,14 @@
 import type { Geometry } from "src/Geometry";
-
-enum MeshState {
-  initialized = "initialized",
-  uninitialized = "uninitialized",
-}
+import { ReadinessState, assertExists } from "src/utils";
 
 export class Mesh<T extends Geometry = never> {
-  public indexFormat: GPUIndexFormat = "uint16";
-  private _geometry?: T = undefined;
-  private _vertexBuffer?: GPUBuffer = undefined;
-  private _indexBuffer?: GPUBuffer = undefined;
-  private _state = MeshState.uninitialized;
+  private _geometry?: T;
+  private _vertexBuffer?: GPUBuffer;
+  private _indexBuffer?: GPUBuffer;
+  private readonly _state = new ReadinessState();
 
   public constructor(geometry?: T) {
+    assertExists(geometry, "Geometry must be provided");
     this._geometry = geometry;
   }
 
@@ -36,9 +32,8 @@ export class Mesh<T extends Geometry = never> {
   }
 
   public setupBuffers(device: GPUDevice): void {
-    if (this._state === MeshState.initialized) {
-      throw new Error("Mesh is already initialized");
-    }
+    this._state.isStateOrThrow(ReadinessState.uninitialized);
+    this._state.setState(ReadinessState.preparing);
 
     this._vertexBuffer = device.createBuffer({
       size: this._geometry!.verticesBytes,
@@ -54,18 +49,18 @@ export class Mesh<T extends Geometry = never> {
       });
       this._geometry!.generateVertices(
         new Float32Array(this._vertexBuffer.getMappedRange()),
-        this.indexFormat === "uint16"
+        this._geometry?.indexFormat === "uint16"
           ? new Uint16Array(this._indexBuffer.getMappedRange())
-          : new Uint32Array(this._indexBuffer.getMappedRange())
+          : new Uint32Array(this._indexBuffer.getMappedRange()),
       );
       this._indexBuffer.unmap();
     } else {
       this._geometry!.generateVertices(
-        new Float32Array(this._vertexBuffer.getMappedRange())
+        new Float32Array(this._vertexBuffer.getMappedRange()),
       );
     }
     this._vertexBuffer.unmap();
 
-    this._state = MeshState.initialized;
+    this._state.setState(ReadinessState.initialized);
   }
 }

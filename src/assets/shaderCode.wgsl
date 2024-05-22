@@ -1,9 +1,11 @@
 struct VertexInput {
-  @location(0) position: vec3f
+  @location(0) position: vec3f,
+  @location(1) normal: vec3f
 }
 
 struct VertexOutput {
-  @builtin(position) position: vec4f
+  @builtin(position) position: vec4f,
+  @location(0) normal: vec4f
 }
 
 struct CameraUniforms {
@@ -19,12 +21,24 @@ struct CameraUniforms {
 @vertex
 fn vertex_main (input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
+  var aPosition = input.position;
+  var aNormal = input.normal;
+
   var time = uTime;
-  output.position = cameraUniforms.viewProjection * model * vec4f(input.position, 1.0);
+  var aView = cameraUniforms.view;
+  var aViewProjection = cameraUniforms.viewProjection;
+  var aColor = defaultColor;
+  var aModel = model;
+
+  output.position = aViewProjection * aModel * vec4f(aPosition, 1.0);
+  output.normal = vec4f(abs(aNormal), 1.0);
+
   return output;
 }
 
 @fragment
 fn fragment_main (input: VertexOutput) -> @location(0) vec4f {
-  return vec4f(defaultColor, 1.0);
+  var aColor = defaultColor;
+  return input.normal;
+  // return vec4f(defaultColor, 1.0);
 }

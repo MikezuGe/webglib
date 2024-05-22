@@ -1,10 +1,10 @@
-import { ONE } from "src/definitions";
+import { N1 } from "src/definitions";
 
 export const getSizeFromFormat = (format: GPUVertexFormat): number => {
   const indexOfX = format.indexOf("x");
-  if (indexOfX === -ONE) {
-    return ONE;
+  if (indexOfX === -N1) {
+    return N1;
   }
-  const n = format.slice(indexOfX + ONE);
+  const n = format.slice(indexOfX + N1);
   return Number(n);
 };

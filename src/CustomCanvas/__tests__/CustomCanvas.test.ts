@@ -1,8 +1,9 @@
-import { CustomCanvas } from "src/CustomCanvas";
 import {
   customCanvasWithCustomProperties,
   defaultCustomCanvas,
-} from "./mocks/customCanvasMocks";
+} from "tests/mocks";
+
+import { CustomCanvas } from "../CustomCanvas";
 
 describe("CustomCanvas", () => {
   it("should create custom canvas", () => {
