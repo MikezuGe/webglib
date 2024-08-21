@@ -10,9 +10,11 @@ import type {
   UniformName,
   UniformWriterDescriptor,
 } from "../types";
-import { assertExists, loadAsset } from "../utils";
+import { assertExists, createAssetStore, loadAsset } from "../utils";
 
 export class Shader {
+  private static readonly _shaders = createAssetStore(Shader);
+  public readonly name = "";
   private _renderReady = false;
   private _code?: string;
 
@@ -43,12 +45,12 @@ export class Shader {
   }
 
   public static fromJSON(name: string): Shader {
-    const shader = new Shader();
+    const shader = Shader._shaders(name);
     void Shader.load(shader, name);
     return shader;
   }
 
-  public static async load(shader: Shader, name: string): Promise<void> {
+  private static async load(shader: Shader, name: string): Promise<void> {
     const json = await loadAsset("shader", name, "json");
     const code = await loadAsset("shaderCode", json.code, "wgsl");
     shader._code = code;
