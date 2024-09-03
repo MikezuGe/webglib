@@ -30,6 +30,10 @@ export class Renderer {
   private readonly _textureFormat: GPUTextureFormat;
   private readonly _renderables = new Map<Mesh, Renderable>();
   private readonly _renderPipelines = new Map<Mesh, GPURenderPipeline>();
+  private readonly _geometryBuffers = new Map<
+    Geometry,
+    { vertexBuffers: GPUBuffer[]; indexBuffer?: GPUBuffer }
+  >();
 
   public constructor({
     adapter,
@@ -137,11 +141,17 @@ export class Renderer {
     vertexBuffers: GPUBuffer[];
     indexBuffer?: GPUBuffer;
   } {
+    if (this._geometryBuffers.has(geometry)) {
+      return this._geometryBuffers.get(geometry)!;
+    }
     const { _device } = this;
     const { vertices, vertexBuffersBytes, indices, indiceBytes, indexFormat } =
       geometry;
+    const buffers: { vertexBuffers: GPUBuffer[]; indexBuffer?: GPUBuffer } = {
+      vertexBuffers: [],
+    };
+    this._geometryBuffers.set(geometry, buffers);
 
-    const vertexBuffers: GPUBuffer[] = [];
     let i = 0;
     for (const vert of vertices) {
       const vertexBuffer = _device.createBuffer({
@@ -151,26 +161,26 @@ export class Renderer {
       });
       new Float32Array(vertexBuffer.getMappedRange()).set(vert);
       vertexBuffer.unmap();
-      vertexBuffers.push(vertexBuffer);
+      buffers.vertexBuffers.push(vertexBuffer);
     }
 
     if (!indices) {
-      return { vertexBuffers };
+      return buffers;
     }
 
-    const indexBuffer = _device.createBuffer({
+    buffers.indexBuffer = _device.createBuffer({
       size: indiceBytes,
       usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
       mappedAtCreation: true,
     });
     if (indexFormat === "uint16") {
-      new Uint16Array(indexBuffer.getMappedRange()).set(indices);
+      new Uint16Array(buffers.indexBuffer.getMappedRange()).set(indices);
     } else {
-      new Uint32Array(indexBuffer.getMappedRange()).set(indices);
+      new Uint32Array(buffers.indexBuffer.getMappedRange()).set(indices);
     }
-    indexBuffer.unmap();
+    buffers.indexBuffer.unmap();
 
-    return { vertexBuffers, indexBuffer };
+    return buffers;
   }
 
   private _setupRenderPipeline(mesh: Mesh): GPURenderPipeline {

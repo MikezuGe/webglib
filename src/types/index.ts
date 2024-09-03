@@ -25,13 +25,10 @@ export interface AttributeInfo {
 interface FormatInfo {
   readonly bytes: number;
   readonly size: number;
-  readonly type: string;
 }
 
 export type VertexFormatInfo = FormatInfo;
 export type IndexFormatInfo = FormatInfo;
-export type UniformTypeInfo = FormatInfo;
-export type TextureFormatInfo = FormatInfo;
 
 export interface GeometryJSON {
   readonly attributes: AttributeName[][];
@@ -124,4 +121,6 @@ declare global {
   export type DeepReadonly<T> = Readonly<
     T extends (infer R)[] ? DeepReadonly<R>[] : T
   >;
+
+  export type AllOrNone<T> = T | { [K in keyof T]?: never };
 }

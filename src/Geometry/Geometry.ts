@@ -76,7 +76,7 @@ export class Geometry {
     return geometry;
   }
 
-  public static async load(geometry: Geometry, name: string): Promise<void> {
+  private static async load(geometry: Geometry, name: string): Promise<void> {
     const { attributes, primitive, stepModes, vertices, indexFormat, indices } =
       await loadAsset("geometry", name, "json");
     geometry._vertices = vertices;

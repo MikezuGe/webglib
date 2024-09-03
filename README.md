@@ -62,3 +62,14 @@ npm run lint
 - Add light calculation
 - Add
 -
+
+| Asset      | Property of | Load        | Description                                                     |
+| ---------- | ----------- | ----------- | --------------------------------------------------------------- |
+| Scene      | -           | Immediately | Holds gameobjects.                                              |
+| GameObject | Scene       | Immediately | Holds model. Exposes transform to class that is extended by it. |
+| Model      | GameObject  | Immediately | Holds meshes.                                                   |
+| Mesh       | Model       | Immediately | Holds rendering related objects                                 |
+| Shader     | Mesh        | Immediately | Holds shader code's info to create buffers                      |
+| Geometry   | Mesh        | On demand   |                                                                 |
+| Material   | Mesh        | Immediately |                                                                 |
+| Texture    | Material    | On demand   |                                                                 |

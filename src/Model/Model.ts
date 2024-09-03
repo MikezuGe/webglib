@@ -1,8 +1,9 @@
 import { Mesh } from "../Mesh";
-import { loadAsset } from "../utils";
+import { createAssetStore, loadAsset } from "../utils";
 
 export class Model {
-  private static readonly _models = new Map<string, Model>();
+  private static readonly _models = createAssetStore(Model, true);
+  public readonly name = "";
   private readonly _meshes: Mesh[] = [];
 
   public get meshes(): readonly Mesh[] {
@@ -10,18 +11,11 @@ export class Model {
   }
 
   public static fromJSON(name: string): Model {
-    let model = Model._models.get(name);
-    if (model) {
-      return model;
-    }
-    model = new Model();
-    Model._models.set(name, model);
-    void Model.load(model, name);
-    return model;
+    return Model._models(name);
   }
 
-  public static async load(model: Model, name: string): Promise<void> {
-    const json = await loadAsset("model", name, "json");
+  public static async load(model: Model): Promise<void> {
+    const json = await loadAsset("model", model.name, "json");
     for (const meshName of json.meshes) {
       model._meshes.push(Mesh.fromJSON(meshName));
     }

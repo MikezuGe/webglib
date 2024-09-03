@@ -1,9 +1,11 @@
 import { Geometry } from "../Geometry";
 import { Material } from "../Material";
 import { Shader } from "../Shader";
-import { loadAsset } from "../utils";
+import { createAssetStore, loadAsset } from "../utils";
 
 export class Mesh {
+  private static readonly _meshes = createAssetStore(Mesh, true);
+  public readonly name = "";
   private _renderReady = false;
   private _geometry?: Geometry;
   private _material?: Material;
@@ -34,13 +36,11 @@ export class Mesh {
   }
 
   public static fromJSON(name: string): Mesh {
-    const mesh = new Mesh();
-    void Mesh.load(mesh, name);
-    return mesh;
+    return Mesh._meshes(name);
   }
 
-  public static async load(mesh: Mesh, name: string): Promise<void> {
-    const json = await loadAsset("mesh", name, "json");
+  public static async load(mesh: Mesh): Promise<void> {
+    const json = await loadAsset("mesh", mesh.name, "json");
     mesh._geometry = Geometry.fromJSON(json.geometry);
     mesh._material = Material.fromJSON(json.material);
     mesh._shader = Shader.fromJSON(json.shader);

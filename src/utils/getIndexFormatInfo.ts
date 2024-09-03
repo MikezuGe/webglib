@@ -1,10 +1,11 @@
+import { UINT16_BYTES, UINT32_BYTES } from "../definitions";
 import type { IndexFormatInfo } from "../types";
 
 import { assertExists } from "./assertExists";
 
 const indexFormatInfoMap = new Map<GPUIndexFormat, IndexFormatInfo>([
-  ["uint16", { bytes: 2, size: 1, type: "uint" }],
-  ["uint32", { bytes: 4, size: 1, type: "uint" }],
+  ["uint16", { size: 1, bytes: UINT16_BYTES }],
+  ["uint32", { size: 1, bytes: UINT32_BYTES }],
 ]);
 
 export const getIndexFormatInfo = (
