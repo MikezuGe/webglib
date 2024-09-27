@@ -1,16 +1,6 @@
 // @ts-expect-error - error
 import * as anyAssetsUrls from "url:../assets/**/*";
 
-import type {
-  GameObjectJSON,
-  GeometryJSON,
-  MaterialJSON,
-  MeshJSON,
-  ModelJSON,
-  SceneJSON,
-  ShaderJSON,
-} from "../types";
-
 import { assertExists } from "./assertExists";
 
 const assetUrls = anyAssetsUrls as Partial<
@@ -18,13 +8,13 @@ const assetUrls = anyAssetsUrls as Partial<
 >;
 
 interface AssetTypeToType {
-  gameObject: GameObjectJSON;
-  geometry: GeometryJSON;
-  material: MaterialJSON;
-  mesh: MeshJSON;
-  model: ModelJSON;
-  scene: SceneJSON;
-  shader: ShaderJSON;
+  gameObject: object;
+  geometry: object;
+  material: object;
+  mesh: object;
+  model: object;
+  scene: object;
+  shader: object;
   shaderCode: string;
   texture: ImageBitmap;
 }
@@ -78,7 +68,7 @@ export const loadAsset = async <T extends keyof AssetTypeToType>(
   name: string,
   extension: AssetTypeToExtension[T],
 ): Promise<AssetTypeToType[T]> => {
-  console.log(type, name, extension);
+  console.log(`${type}/${name}.${extension}`);
   const location = getAssetLocationByType(type);
   const fileName = `${name}.${extension}`;
   const url = assetUrls[location]?.[fileName];

@@ -2,7 +2,6 @@ export * from "./assertExists";
 export * from "./calculateSurfaceNormal";
 export * from "./createAssetStore";
 export * from "./degToRad";
-export * from "./getAttributeInfo";
 export * from "./getIndexFormatInfo";
 export * from "./getVertexFormatInfo";
 export * from "./Inputs";

@@ -41,6 +41,15 @@ describe("utils", () => {
       calculateSurfaceNormal(v1, v2, v3, expected);
       expect(expected).toEqual(result);
     });
+
+    it("throws with vectors that have more than 3 components", () => {
+      const v1 = [0, 0, 0, 0];
+      const v2 = [1, 0, 0, 0];
+      const v3 = [0, 1, 0, 0];
+      expect(() => calculateSurfaceNormal(v1, v2, v3, [0, 0, 0])).toThrow(
+        "Vectors must have 3 components",
+      );
+    });
   });
 
   describe("degToRad", () => {

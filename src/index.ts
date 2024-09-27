@@ -2,33 +2,31 @@
 import { mat4 } from "wgpu-matrix";
 
 import { PerspectiveCamera } from "./Camera";
-import type { CustomCanvas } from "./CustomCanvas";
-import { initWebGPU } from "./CustomCanvas";
+import { type CustomCanvas, initWebGPU } from "./CustomCanvas";
+import { Transform } from "./Transform";
+import { MAT4_SIZE, N1 } from "./definitions";
+import { createPlaneData, createVertexBuffers } from "./geometry";
+import { render } from "./renderer";
+import { createLayouts, defaultCode, parseShaderCode } from "./shader";
 import {
   createSampler,
   createTexture,
   createTextureBindGroup,
-  loadTexture,
-} from "./Texture";
-import { createUniformBindGroup, createUniformBuffer } from "./Uniform";
-import { MAT4_BYTES, MAT4_SIZE } from "./definitions";
+} from "./texture";
+import type {
+  AttributeName,
+  Renderable,
+  SamplerName,
+  TextureName,
+  UniformMemberNameMap,
+  UniformName,
+} from "./types";
 import {
-  createPlaneData,
-  createBuffers as createVertexBuffers,
-} from "./geometry";
-import { createShaderCode, parseShaderCode } from "./shader";
-
-interface Renderable {
-  renderPipeline: GPURenderPipeline;
-  vertexBuffers: GPUBuffer[];
-  indexBuffer?: GPUBuffer;
-  indexFormat?: GPUIndexFormat;
-  drawCount: number;
-  textureBindGroupIndex: number;
-  textureBindGroup: GPUBindGroup;
-  modelBindGroupIndex: number;
-  modelBindGroups: GPUBindGroup[];
-}
+  createUniformBindGroup,
+  createUniformBuffer,
+  createUniformWriter,
+} from "./uniform";
+import { loadAsset } from "./utils";
 
 const setupCanvas = (canvas: CustomCanvas): void => {
   document.body.appendChild(canvas.canvas);
@@ -39,86 +37,6 @@ const setupCanvas = (canvas: CustomCanvas): void => {
   };
   window.onresize = resizeCanvas;
   resizeCanvas();
-};
-
-const createLayouts = (
-  device: GPUDevice,
-  bindGroupLayoutEntriesByGroup: Record<number, GPUBindGroupLayoutEntry[]>,
-): {
-  bindGroupLayoutsByGroup: Record<number, GPUBindGroupLayout>;
-  pipelineLayout: GPUPipelineLayout;
-} => {
-  const bindGroupLayoutsByGroup: Record<number, GPUBindGroupLayout> = {};
-  for (const group in bindGroupLayoutEntriesByGroup) {
-    bindGroupLayoutsByGroup[group] = device.createBindGroupLayout({
-      entries: bindGroupLayoutEntriesByGroup[group],
-    });
-  }
-  const bindGroupLayouts: GPUBindGroupLayout[] = [];
-  const sortedGroups = Object.keys(bindGroupLayoutsByGroup)
-    .map((k) => Number(k))
-    .sort((a, b) => a - b);
-  for (const group of sortedGroups) {
-    bindGroupLayouts.push(bindGroupLayoutsByGroup[group]);
-  }
-  const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts,
-  });
-  return {
-    bindGroupLayoutsByGroup,
-    pipelineLayout,
-  };
-};
-
-const renderIndexed = (
-  passEncoder: GPURenderPassEncoder,
-  renderable: Renderable,
-): void => {
-  const {
-    modelBindGroups,
-    modelBindGroupIndex,
-    drawCount,
-    indexBuffer,
-    indexFormat,
-  } = renderable;
-  passEncoder.setIndexBuffer(indexBuffer!, indexFormat!);
-  for (const bindGroup of modelBindGroups) {
-    passEncoder.setBindGroup(modelBindGroupIndex, bindGroup);
-    passEncoder.drawIndexed(drawCount);
-  }
-};
-
-const renderNormally = (
-  passEncoder: GPURenderPassEncoder,
-  renderable: Renderable,
-): void => {
-  const { modelBindGroups, modelBindGroupIndex, drawCount } = renderable;
-  for (const bindGroup of modelBindGroups) {
-    passEncoder.setBindGroup(modelBindGroupIndex, bindGroup);
-    passEncoder.draw(drawCount);
-  }
-};
-
-const render = (
-  passEncoder: GPURenderPassEncoder,
-  renderables: Renderable[],
-): void => {
-  for (const renderable of renderables) {
-    passEncoder.setPipeline(renderable.renderPipeline);
-    passEncoder.setBindGroup(
-      renderable.textureBindGroupIndex,
-      renderable.textureBindGroup,
-    );
-    let i = 0;
-    for (const buffer of renderable.vertexBuffers) {
-      passEncoder.setVertexBuffer(i++, buffer);
-    }
-    if (renderable.indexBuffer) {
-      renderIndexed(passEncoder, renderable);
-    } else {
-      renderNormally(passEncoder, renderable);
-    }
-  }
 };
 
 const renderPassDescriptor = {
@@ -137,7 +55,6 @@ export const run = async (): Promise<void> => {
   const { canvas, context, device, textureFormat } = await initWebGPU();
   setupCanvas(canvas);
 
-  const code = await createShaderCode();
   const {
     attributeMap,
     fragmentEntry,
@@ -146,12 +63,63 @@ export const run = async (): Promise<void> => {
     textureDescriptors,
     samplerDescriptors,
     bindGroupLayoutEntriesByGroup,
-  } = parseShaderCode(code);
+  } = parseShaderCode<
+    AttributeName,
+    UniformName,
+    TextureName,
+    SamplerName,
+    UniformMemberNameMap
+  >(defaultCode);
 
   const { bindGroupLayoutsByGroup, pipelineLayout } = createLayouts(
     device,
     bindGroupLayoutEntriesByGroup,
   );
+
+  const imageBitmap = await loadAsset("texture", "eat", "png");
+  const textureSize: GPUExtent3DStrict = {
+    width: imageBitmap.width,
+    height: imageBitmap.height,
+    depthOrArrayLayers: 1,
+  };
+
+  const uTime = createUniformBuffer(device, uniformDescriptors, "uTime");
+  const uCamera = createUniformBuffer(device, uniformDescriptors, "uCamera");
+  const tColor = createTexture(device, { imageBitmap, size: textureSize });
+  const sColor = createSampler(device, {});
+
+  const uTimeWriters = createUniformWriter({
+    device,
+    uniformDescriptors,
+    uniformBuffer: uTime,
+    name: "uTime",
+  });
+
+  const uCameraWriters = createUniformWriter({
+    device,
+    uniformDescriptors,
+    uniformBuffer: uCamera,
+    name: "uCamera",
+  });
+
+  const timeCameraBindGroup = createUniformBindGroup({
+    device,
+    uniformDescriptors,
+    bindGroupLayoutsByGroup,
+    uniformBuffersByName: {
+      uTime,
+      uCamera,
+    },
+  });
+
+  const textureBindGroup = createTextureBindGroup({
+    device,
+    samplerDescriptors,
+    textureDescriptors,
+    bindGroupLayoutsByGroup,
+    texturesByName: { tColor },
+    samplersByName: { sColor },
+  });
 
   const vertexData = await createPlaneData();
   const {
@@ -163,71 +131,7 @@ export const run = async (): Promise<void> => {
     vertexBuffers,
   } = createVertexBuffers(device, attributeMap, vertexData);
 
-  const imageBitmap = await loadTexture("eat.png");
-  const textureSize: GPUExtent3DStrict = {
-    width: imageBitmap.width,
-    height: imageBitmap.height,
-    depthOrArrayLayers: 1,
-  };
-
-  const uTime = createUniformBuffer(device, uniformDescriptors, "uTime");
-  const uCamera = createUniformBuffer(device, uniformDescriptors, "uCamera");
-  const tColor = createTexture(device, { imageBitmap, size: textureSize });
-  const sColor = createSampler(device, {});
-  const uModel = createUniformBuffer(device, uniformDescriptors, "uModel");
-
-  const timeCameraBindGroup = createUniformBindGroup(
-    device,
-    uniformDescriptors,
-    bindGroupLayoutsByGroup,
-    {
-      uTime,
-      uCamera,
-    },
-  );
-
-  const textureBindGroup = createTextureBindGroup({
-    device,
-    samplerDescriptors,
-    textureDescriptors,
-    bindGroupLayoutsByGroup,
-    texturesByName: { tColor },
-    samplersByName: { sColor },
-  });
-
-  const modelBindGroup = createUniformBindGroup(
-    device,
-    uniformDescriptors,
-    bindGroupLayoutsByGroup,
-    {
-      uModel,
-    },
-  );
-
-  /*
-  const textureSize: GPUExtent3DStrict = {
-    width: 2,
-    height: 2,
-    depthOrArrayLayers: 1,
-  };
-
-  const r = [255, 0, 0, 255];
-  const g = [0, 255, 0, 255];
-  const b = [0, 0, 255, 255];
-  const w = [255, 255, 255, 255];
-  device.queue.writeTexture(
-    { texture: tColor },
-    // prettier-ignore
-    new Uint8Array([
-      ...r, ...g,
-      ...b, ...w
-    ]),
-    { bytesPerRow: textureSize.width * 4 * UINT8_BYTES },
-    textureSize,
-  );
-  */
-
-  const shaderModule = device.createShaderModule({ code });
+  const shaderModule = device.createShaderModule({ code: defaultCode });
   const renderPipeline = await device.createRenderPipelineAsync({
     layout: pipelineLayout,
     vertex: {
@@ -243,21 +147,84 @@ export const run = async (): Promise<void> => {
     primitive,
   });
 
-  const m4data = mat4.identity();
-  device.queue.writeBuffer(uModel, 0, m4data);
-  const renderables: Renderable[] = [
-    {
-      renderPipeline,
-      vertexBuffers,
-      indexBuffer,
-      indexFormat,
-      drawCount,
-      textureBindGroupIndex: textureBindGroup.bindGroupIndex,
-      textureBindGroup: textureBindGroup.bindGroup,
-      modelBindGroupIndex: modelBindGroup.bindGroupIndex,
-      modelBindGroups: [modelBindGroup.bindGroup],
-    },
-  ];
+  const uModel1 = createUniformBuffer(device, uniformDescriptors, "uModel");
+
+  const uModel1Writers = createUniformWriter({
+    device,
+    uniformDescriptors,
+    uniformBuffer: uModel1,
+    name: "uModel",
+  });
+
+  const uModel1BindGroup = createUniformBindGroup({
+    device,
+    uniformDescriptors,
+    bindGroupLayoutsByGroup,
+    uniformBuffersByName: { uModel: uModel1 },
+  });
+
+  const uModel2 = createUniformBuffer(device, uniformDescriptors, "uModel");
+
+  const uModel2Writers = createUniformWriter({
+    device,
+    uniformDescriptors,
+    uniformBuffer: uModel2,
+    name: "uModel",
+  });
+
+  const uModel2BindGroup = createUniformBindGroup({
+    device,
+    uniformDescriptors,
+    bindGroupLayoutsByGroup,
+    uniformBuffersByName: { uModel: uModel2 },
+  });
+
+  const transform1 = new Transform();
+  const transform2 = new Transform();
+
+  const camera = new PerspectiveCamera();
+  camera.transform.pz = 5;
+
+  const f1 = new Float32Array(N1);
+  const f16 = new Float32Array(MAT4_SIZE);
+  mat4.identity(f16);
+
+  f1.set([0.0]);
+  uTimeWriters.uTime(f1);
+
+  camera.copyView(f16);
+  uCameraWriters.uView(f16);
+
+  camera.copyProjection(f16);
+  uCameraWriters.uProjection(f16);
+
+  transform1.px = -1.0;
+  transform1.copyWorldTransform(f16);
+  uModel1Writers.uModel(f16);
+
+  transform2.px = 1.0;
+  transform2.copyWorldTransform(f16);
+  uModel2Writers.uModel(f16);
+
+  const renderables = new Map<GPUBuffer[], Renderable>();
+  renderables.set(vertexBuffers, {
+    renderPipeline,
+    vertexBuffers,
+    indexBuffer,
+    indexFormat,
+    drawCount,
+    modelBindGroupIndex: uModel1BindGroup.bindGroupIndex,
+    textureBindGroupIndex: textureBindGroup.bindGroupIndex,
+    textureBindGroups: [
+      {
+        textureBindGroup: textureBindGroup.bindGroup,
+        modelBindGroups: [
+          uModel1BindGroup.bindGroup,
+          uModel2BindGroup.bindGroup,
+        ],
+      },
+    ],
+  });
 
   const [colorAttachment] = renderPassDescriptor.colorAttachments;
   colorAttachment.view = context.getCurrentTexture().createView();
@@ -268,15 +235,9 @@ export const run = async (): Promise<void> => {
     timeCameraBindGroup.bindGroupIndex,
     timeCameraBindGroup.bindGroup,
   );
-  device.queue.writeBuffer(uTime, 0, new Float32Array([0.0]));
-  const camera = new PerspectiveCamera();
-  camera.transform.pz = 5;
-  // prettier-ignore
-  device.queue.writeBuffer(uCamera, 0, camera.copyView(new Float32Array(MAT4_SIZE)));
-  // prettier-ignore
-  device.queue.writeBuffer(uCamera, MAT4_BYTES, camera.copyProjection(new Float32Array(MAT4_SIZE)));
 
-  render(passEncoder, renderables);
+  render(passEncoder, renderables.values());
+
   passEncoder.end();
   device.queue.submit([commandEncoder.finish()]);
 };
